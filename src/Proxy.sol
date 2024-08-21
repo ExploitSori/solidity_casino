@@ -5,9 +5,20 @@ import {ERC1967Utils} from "../lib/openzeppelin-contracts/contracts/proxy/ERC196
 contract Proxy{
 	bytes32 internal constant _IMPLEMENTATION_SLOT = keccak256("sori.implementation");
 	constructor(address impl){
-		StorageSlot.getAddressSlot(IMPLEMENTATION_SLOT).value = impl;
+		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = impl;
 	}
-	fallback() payable{
+	function getAddress()external returns(address){
+		return StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value;
+	}
+	function upgradeTo(address impl) internal {
+		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = impl;
+	}
+	function upgradeToAndCall(address newImplementation, bytes memory data) public payable {
+		upgradeTo(newImplementation);
+		(bool success, ) = newImplementation.delegatecall(data);
+		require(success, "Upgrade and call failed");
+	}
+	fallback() external payable{
 		//delegatecall
 	}
 
