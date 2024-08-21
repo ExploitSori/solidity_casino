@@ -2,24 +2,25 @@
 pragma solidity ^0.8.13;
 import {StorageSlot} from "../lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol";
 import {ERC1967Utils} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {console} from "forge-std/console.sol";
 contract Proxy{
 	bytes32 internal constant _IMPLEMENTATION_SLOT = keccak256("sori.implementation");
+	address owner;
 	constructor(address impl){
 		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = impl;
+		owner = msg.sender;
 	}
-	function getAddress()external returns(address){
+	function getAddress()public returns(address){
 		return StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value;
 	}
-	function upgradeTo(address impl) internal {
-		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = impl;
-	}
-	function upgradeToAndCall(address newImplementation, bytes memory data) public payable {
-		upgradeTo(newImplementation);
-		(bool success, ) = newImplementation.delegatecall(data);
-		require(success, "Upgrade and call failed");
-	}
-	fallback() external payable{
+	fallback(bytes calldata data) external payable returns(bytes memory ret){
 		//delegatecall
+		address impl = getAddress();
+		console.log(impl);
+//		console.logBytes32(data);
+		(bool success, bytes memory res) = impl.delegatecall(data);
+		require(success, "execution fail");
+		return res;
 	}
 
 }
