@@ -4,17 +4,23 @@ pragma solidity ^0.8.13;
 import {StorageSlot} from "../lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol";
 import {ERC1967Utils} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-contract STK{
+import {console} from "forge-std/console.sol";
+contract STK is ERC20{
 	address owner;
 	constructor(uint256 total, address casino) ERC20("solidity_casino_Token","STK"){
 		//_mint(casino, total);
+		console.log("stk casino");
+		console.log(casino);
 		owner = casino;
+		console.log(owner);
 	}
 	modifier ownerChk{
-		require(owner == msg.sender, "not owner");
+		console.log(owner);
+		console.log(msg.sender);
+		require(owner == msg.sender, "not owner!!");
 		_;
 	}
-/*	function mint(uint256 cnt) ownerChk external{
+	function mint(uint256 cnt) ownerChk external{
 		_mint(owner, cnt);
-	}*/
+	}
 }

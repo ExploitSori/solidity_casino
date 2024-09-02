@@ -10,6 +10,7 @@ contract ProxyTest is Test {
 	
 	Casino public casino;
 	Casino public newCasino;
+	Casino public _proxy;
 	STK public stk;
 	address alice;
 	address charlie;
@@ -18,6 +19,8 @@ contract ProxyTest is Test {
 		casino = new Casino();
 		proxy = new Proxy(address(casino));
 		stk = new STK(100 ether, address(proxy));
+		_proxy = Casino(address(proxy));
+		_proxy.initialize(address(proxy), address(stk));
 		console.log(address(proxy));
 		alice = makeAddr("alice");
 		charlie = makeAddr("charlie");
@@ -47,8 +50,7 @@ contract ProxyTest is Test {
 		console.log(a);
 	}
 	function welcome_a_b() public{
-		Casino _proxy = Casino(address(proxy));
-		_proxy.welcome();
+		_proxy = Casino(address(proxy));
 		vm.startPrank(alice);
 		{
 			_proxy.welcome();
@@ -70,10 +72,161 @@ contract ProxyTest is Test {
 		welcome_a_b();
 		vm.startPrank(alice);
 		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
 			_proxy.makeGame(1 ether, 1);
 		}
 		vm.stopPrank();
-
 	}
-
+	function testFail_makeGame() public {
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 1);
+			_proxy.makeGame(1 ether, 1);
+		}
+		vm.stopPrank();
+	}
+	function test_joinGame() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 1);
+		}
+		vm.stopPrank();
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.gameJoin(1);
+			
+		}
+		vm.stopPrank();
+	}
+	function testFail_joinGame1() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 1);
+		}
+		vm.stopPrank();
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.gameJoin(1);
+			_proxy.gameJoin(2);
+		}
+		vm.stopPrank();
+	}
+	function testFail_joinGame2() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 1);
+			_proxy.gameJoin(1);
+		}
+		vm.stopPrank();
+	}
+	function test_gameEnd() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 122);
+			uint256 alice_ins = _proxy.howManyMoney();
+			require(alice_ins == 9 ether);
+		}
+		vm.stopPrank();
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.gameJoin(1);
+			uint256 charlie_ins = _proxy.howManyMoney();
+			require(charlie_ins == 9 ether);
+		}
+		vm.stopPrank();
+		//vm.roll(block.number + 1);
+		vm.warp(5 minutes + 1 seconds);
+		_proxy.gameEnd();
+		vm.startPrank(charlie);
+		{
+			uint256 charlie_ins = _proxy.howManyMoney();
+			console.log(charlie_ins);
+			require(charlie_ins == 11 ether);
+		}
+		vm.stopPrank();
+	}
+	function testFail_gameEnd() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 1);
+			uint256 alice_ins = _proxy.howManyMoney();
+			require(alice_ins == 9 ether);
+		}
+		vm.stopPrank();
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.gameJoin(1);
+			uint256 charlie_ins = _proxy.howManyMoney();
+			require(charlie_ins == 9 ether);
+		}
+		vm.stopPrank();
+		_proxy.gameEnd();
+		
+	}
+	function test_makeGameEnd() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 11212);
+		}
+		vm.stopPrank();
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.gameJoin(1);
+			
+		}
+		vm.stopPrank();
+		vm.warp(5 minutes + 1 seconds);
+		vm.startPrank(charlie);
+		{
+			uint256 charlie_ins = _proxy.howManyMoney();
+			require(charlie_ins == 9 ether);	
+			_proxy.makeGame(1 ether, 1);
+			charlie_ins = _proxy.howManyMoney();
+			require(charlie_ins == 10 ether);
+		}
+		vm.startPrank(alice);
+		{
+			uint256 alice_ins = _proxy.howManyMoney();
+			require(alice_ins == 9 ether);	
+		}
+	}
 }

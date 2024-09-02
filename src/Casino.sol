@@ -4,8 +4,9 @@ import {console} from "forge-std/console.sol";
 import {StorageSlot} from "../lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol";
 import {ERC1967Utils} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {STK} from "./STK.sol";
 contract Casino{
-	IERC20 stk;
+	STK stk;
 	Game run_game;
 	Game prev_game;
 	mapping(address=>User) users;
@@ -58,7 +59,7 @@ contract Casino{
 		console.log("qweqwe");
 		console.log(owner);
 		console.log(msg.sender);
-		require(owner == msg.sender, "not owner");
+		require(owner == msg.sender, "not owner@@");
 		_;
 	}
 	modifier proxyChk{
@@ -69,7 +70,7 @@ contract Casino{
 	function initialize(address _proxy, address _stk) ownerChk external{
 		//require(!initailized, "initialized");
 		StorageSlot.getAddressSlot(_PROXY_SLOT).value = _proxy;
-		stk = IERC20(address(_stk));
+		stk = STK(address(_stk));
 		initialized = true;
 	}
 	function insertToken(uint256 amount) proxyChk external{
@@ -78,13 +79,13 @@ contract Casino{
 		uint balanced = stk.balanceOf(msg.sender);
 		require(balanced >= amount, "amount err1");
 		require(approved >= amount, "amount err2");
-		stk.transferFrom(msg.sender, address(this), amount);
+		(bool success, ) = address(stk).call(abi.encodeWithSignature("transferFrom(address,address,uint256)",msg.sender, address(this), amount));
 		users[msg.sender].insertedToken += amount;
 	}
 	function randoms() public returns(uint){
 		// random > block difict, num, time mix...
 		uint256 pick = 2;
-		uint256 rand =  uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, block.difficulty, block.number))) % 2;
+		uint256 rand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, block.difficulty, block.number))) % 2;
 		console.log(rand);
 		return rand;
 	}
@@ -107,10 +108,13 @@ contract Casino{
             delete game.userSelect[user];
         }
     }
-	function endGame() public {
+	function endGame() internal {
         // First, clear the previous game data
         clearGame(prev_game);
         // Copy basic fields
+		run_game.select = randoms();
+		console.log("run_sel");
+		console.log(run_game.select);
         prev_game.idx = run_game.idx;
         prev_game.userCnt = run_game.userCnt;
         prev_game.money = run_game.money;
@@ -129,38 +133,38 @@ contract Casino{
 			delete run_game.userSelect[user];
 			delete run_game.users[i];
         }
-
-		uint256 winner = 1;
+		console.log("total");
+		console.log(prev_game.totalMoney);
+		uint256 winner = 0;
 		for(uint i =0; i < prev_game.users.length; i++){
+			
             if(prev_game.userSelect[prev_game.users[i]] == prev_game.select){
+				console.log("ii");
+			console.log(prev_game.users[i]);
+			console.log(prev_game.userSelect[prev_game.users[i]]);
                 winner += 1;
             }
         }
+		console.log("winner");
+		console.log(winner);
         for(uint i =0; i < prev_game.users.length; i++){
             if(prev_game.userSelect[prev_game.users[i]] == prev_game.select){
                 users[prev_game.users[i]].insertedToken +=  (prev_game.totalMoney / winner);
             }
         }
+		prev_game.totalMoney = 0;
         // Optionally, reset run_game if needed
         clearGame(run_game);
     }
-	function gameEnd() proxyChk internal {
-		//prev_game = run_game;
-		require(prev_game.stat != Status.ended, "game end");
-		prev_game.stat = Status.ended;
-		prev_game.select = randoms(); 
-		uint256 winner = 1;
-		for(uint i =0; i < prev_game.users.length; i++){
-			if(prev_game.userSelect[prev_game.users[i]] == prev_game.select){
-				winner += 1;
-			}
+	function gameEnd() proxyChk external {
+		if(run_game.createdAt + 5 minutes <= block.timestamp && run_game.idx != 0){
+			endGame();
 		}
-		for(uint i =0; i < prev_game.users.length; i++){
-			if(prev_game.userSelect[prev_game.users[i]] == prev_game.select){
-				users[prev_game.users[i]].insertedToken +=  (prev_game.totalMoney / winner);
-			}
+		if(run_game.createdAt + 5 >= block.timestamp && run_game.createdAt != 0 ){
+			console.log(run_game.createdAt + 5);
+			console.log(block.timestamp);
+			revert("game run");
 		}
-		// 수수료는 딜러가..
 	}
 	function gameJoin(uint256 selectNumber) proxyChk external {
 		//game chk 
@@ -170,14 +174,16 @@ contract Casino{
 			endGame();
 			delete run_game;
 		}
+		console.log(run_game.idx);
 		require(run_game.idx != 0 , "game not found");
 		require(run_game.userSelect[msg.sender] == 0);
 		require(users[msg.sender].insertedToken >= run_game.money, "inserted token < money");
-		users[msg.sender].insertedToken -= run_game.money;
 		run_game.userSelect[msg.sender] = selectNumber;
 		run_game.users.push(msg.sender);
 		run_game.lastJoinBlock = block.number;
 		run_game.userCnt += 1;
+		users[msg.sender].insertedToken -= run_game.money;
+		run_game.totalMoney += run_game.money;
 		
 	}
 	function makeGame(uint256 money, uint256 sel) proxyChk external{
@@ -188,21 +194,25 @@ contract Casino{
 			// 게임 종료 로직 구현해야함
 //			gameEnd();
 			endGame();
-			delete run_game;
 		}
+		if(run_game.createdAt + 5 >= block.timestamp && run_game.createdAt != 0 ){
+			console.log(run_game.createdAt + 5);
+			console.log(block.timestamp);
+			revert("game opend");
+		}
+		game_idx += 1;
 		run_game.idx = game_idx;
 		run_game.userCnt = 1;
 		run_game.users.push(msg.sender);
 		run_game.money = money;
-		users[msg.sender].insertedToken -= money;
 		run_game.totalMoney += money;
 		run_game.stat = Status.Wait;
-		run_game.users.push(msg.sender);
 		run_game.userSelect[msg.sender] = sel;
 		run_game.createdAt = block.timestamp;
 		run_game.lastJoinBlock = block.number;
-		game_idx += 1;
+		users[msg.sender].insertedToken -= money;
 	}
+	
 	function howManyMoney() proxyChk external returns(uint){
 		return users[msg.sender].insertedToken;
 	}
@@ -223,11 +233,18 @@ contract Casino{
 	function reloadMachine() proxyChk ownerChk external{
 		status = machineStat.Run;
 	}
-	function welcome() proxyChk ownerChk external{
+	function welcome() proxyChk external{
 		if(!welcome_user[msg.sender]){
+			console.log("welcome");
+			console.log(msg.sender);
 			welcome_user[msg.sender] = true;
+			address impl = getAddress(_IMPLEMENTATION_SLOT);
+			address(stk).call(abi.encodeWithSignature("mint(uint256)",10 ether));
+			address(stk).call(abi.encodeWithSignature("transfer(address,uint256)",msg.sender,10 ether));
+			/*			
 			stk.mint(100 ether);
 			stk.transfer(msg.sender, 100 ether);
+			*/
 		}
 		else{
 			revert("Already paid");
