@@ -7,14 +7,14 @@ import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.s
 contract STK{
 	address owner;
 	constructor(uint256 total, address casino) ERC20("solidity_casino_Token","STK"){
-		_mint(casino, total);
+		//_mint(casino, total);
 		owner = casino;
 	}
 	modifier ownerChk{
 		require(owner == msg.sender, "not owner");
 		_;
 	}
-	function mint(uint256 cnt) ownerChk external{
+/*	function mint(uint256 cnt) ownerChk external{
 		_mint(owner, cnt);
-	}
+	}*/
 }

@@ -4,8 +4,8 @@ import {StorageSlot} from "../lib/openzeppelin-contracts/contracts/utils/Storage
 import {ERC1967Utils} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {console} from "forge-std/console.sol";
 contract Proxy{
-	bytes32 internal constant _IMPLEMENTATION_SLOT = keccak256("sori.implementation");
 	address owner;
+	bytes32 internal constant _IMPLEMENTATION_SLOT = keccak256("sori.implementation");
 	constructor(address impl){
 		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = impl;
 		owner = msg.sender;
