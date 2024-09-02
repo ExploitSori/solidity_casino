@@ -18,6 +18,7 @@ contract Casino{
 	bool initialized;
 	uint game_idx;
 	uint game_cr;
+	mapping(address=>bool) welcome_user;
 	bytes32 internal constant _IMPLEMENTATION_SLOT = keccak256("sori.implementation");
 	bytes32 internal constant _ADMIN_SLOT = keccak256("sori.admin");
 	bytes32 internal constant _PROXY_SLOT = keccak256("sori.proxy");
@@ -221,6 +222,16 @@ contract Casino{
 	}
 	function reloadMachine() proxyChk ownerChk external{
 		status = machineStat.Run;
+	}
+	function welcome() proxyChk ownerChk external{
+		if(!welcome_user[msg.sender]){
+			welcome_user[msg.sender] = true;
+			stk.mint(100 ether);
+			stk.transfer(msg.sender, 100 ether);
+		}
+		else{
+			revert("Already paid");
+		}
 	}
 	function upgradeTo(address impl) internal {
 		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = impl;
