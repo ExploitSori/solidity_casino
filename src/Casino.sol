@@ -99,6 +99,7 @@ contract Casino{
 		return rand;
 	}
 	function clearGame(Game storage game) internal {
+		require(game.stat == Status.Ended || game.idx == 0 , "game not ended");
         game.idx = 0;
         game.userCnt = 0;
         delete game.users; // Clears the array
@@ -119,6 +120,7 @@ contract Casino{
     }
 	function endGame() internal {
         clearGame(prev_game);
+		require(run_game.stat == Status.Maked || run_game.stat == Status.Running, "game not found");
 		run_game.select = randoms();
 		run_game.stat = Status.Ended;
         prev_game.idx = run_game.idx;
@@ -170,8 +172,8 @@ contract Casino{
 			revert("game end");
 		}
 		else{
-			require(run_game.idx != 0 , "game not found");
-			require(run_game.userSelect[msg.sender] == 0);
+			require(run_game.stat == Status.Maked || run_game.stat == Status.Running, "game not found");
+			require(run_game.userSelect[msg.sender] == 0, "game joined");
 			require(users[msg.sender].insertedToken >= run_game.money, "inserted token < money");
 			users[msg.sender].insertedToken -= run_game.money;
 			run_game.userSelect[msg.sender] = selectNumber;
@@ -195,17 +197,20 @@ contract Casino{
 		if(run_game.createdAt + 5 >= block.timestamp && run_game.createdAt != 0 ){
 			revert("game opend");
 		}
-		game_idx += 1;
-		run_game.idx = game_idx;
-		run_game.userCnt = 1;
-		run_game.users.push(msg.sender);
-		run_game.money = money;
-		run_game.totalMoney += money;
-		run_game.stat = Status.Maked;
-		run_game.userSelect[msg.sender] = sel;
-		run_game.createdAt = block.timestamp;
-		run_game.lastJoinBlock = block.number;
-		users[msg.sender].insertedToken -= money;
+		if(run_game.stat == Status.Wait){
+			game_idx += 1;
+			run_game.idx = game_idx;
+			run_game.userCnt = 1;
+			run_game.users.push(msg.sender);
+			run_game.money = money;
+			run_game.totalMoney += money;
+			run_game.stat = Status.Maked;
+			run_game.userSelect[msg.sender] = sel;
+			run_game.createdAt = block.timestamp;
+			run_game.lastJoinBlock = block.number;
+			users[msg.sender].insertedToken -= money;
+		}
+		
 	}
 	
 	function howManyMoney() proxyChk external returns(uint){
