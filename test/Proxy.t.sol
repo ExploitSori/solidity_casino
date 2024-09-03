@@ -354,4 +354,24 @@ contract ProxyTest is Test {
 		}
 		vm.stopPrank();
 	}
+	function test_reverseLevel() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			vm.expectRevert();
+			_proxy.gameEnd();
+			_proxy.insertToken(10 ether);
+			vm.expectRevert();
+			_proxy.gameJoin(10);
+			_proxy.makeGame(1 ether, 1);
+			uint256 alice_ins = _proxy.howManyMoney();
+			require(alice_ins == 9 ether);
+			vm.expectRevert();
+			_proxy.gameEnd();
+		}
+		vm.stopPrank();
+		
+	}
 }

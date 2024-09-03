@@ -99,7 +99,7 @@ contract Casino{
 		return rand;
 	}
 	function clearGame(Game storage game) internal {
-		require(game.stat == Status.Ended || game.idx == 0 , "game not ended");
+		require(game.stat == Status.Ended || game.idx == 0 , "game not ended");//게임이 끝나거나 초기상태이거나
         game.idx = 0;
         game.userCnt = 0;
         delete game.users; // Clears the array
@@ -120,7 +120,6 @@ contract Casino{
     }
 	function endGame() internal {
         clearGame(prev_game);
-		require(run_game.stat == Status.Maked || run_game.stat == Status.Running, "game not found");
 		run_game.select = randoms();
 		run_game.stat = Status.Ended;
         prev_game.idx = run_game.idx;
@@ -158,6 +157,7 @@ contract Casino{
         clearGame(run_game);
     }
 	function gameEnd() proxyChk machineStatChk external {
+		require(run_game.stat == Status.Maked || run_game.stat == Status.Running, "game not found");
 		if(run_game.createdAt + 5 minutes <= block.timestamp && run_game.idx != 0){
 			endGame();
 		}
