@@ -9,14 +9,9 @@ contract STK is ERC20{
 	address owner;
 	constructor(uint256 total, address casino) ERC20("solidity_casino_Token","STK"){
 		//_mint(casino, total);
-		console.log("stk casino");
-		console.log(casino);
 		owner = casino;
-		console.log(owner);
 	}
 	modifier ownerChk{
-		console.log(owner);
-		console.log(msg.sender);
 		require(owner == msg.sender, "not owner!!");
 		_;
 	}

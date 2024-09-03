@@ -57,9 +57,6 @@ contract Casino{
 	}
 	modifier ownerChk{
 		address owner = getAddress(_ADMIN_SLOT);
-		console.log("qweqwe");
-		console.log(owner);
-		console.log(msg.sender);
 		require(owner == msg.sender, "not owner@@");
 		_;
 	}
@@ -99,7 +96,6 @@ contract Casino{
 		// random > block difict, num, time mix...
 		uint256 pick = 2;
 		uint256 rand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, block.difficulty, block.number))) % 2;
-		console.log(rand);
 		return rand;
 	}
 	function clearGame(Game storage game) internal {
@@ -122,12 +118,8 @@ contract Casino{
         }
     }
 	function endGame() internal {
-        // First, clear the previous game data
         clearGame(prev_game);
-        // Copy basic fields
 		run_game.select = randoms();
-		console.log("run_sel");
-		console.log(run_game.select);
         prev_game.idx = run_game.idx;
         prev_game.userCnt = run_game.userCnt;
         prev_game.money = run_game.money;
@@ -146,20 +138,13 @@ contract Casino{
 			delete run_game.userSelect[user];
 			delete run_game.users[i];
         }
-		console.log("total");
-		console.log(prev_game.totalMoney);
 		uint256 winner = 0;
 		for(uint i =0; i < prev_game.users.length; i++){
 			
             if(prev_game.userSelect[prev_game.users[i]] == prev_game.select){
-				console.log("ii");
-			console.log(prev_game.users[i]);
-			console.log(prev_game.userSelect[prev_game.users[i]]);
                 winner += 1;
             }
         }
-		console.log("winner");
-		console.log(winner);
         for(uint i =0; i < prev_game.users.length; i++){
             if(prev_game.userSelect[prev_game.users[i]] == prev_game.select){
                 users[prev_game.users[i]].insertedToken +=  (prev_game.totalMoney / winner);
@@ -174,8 +159,6 @@ contract Casino{
 			endGame();
 		}
 		if(run_game.createdAt + 5 >= block.timestamp && run_game.createdAt != 0 ){
-			console.log(run_game.createdAt + 5);
-			console.log(block.timestamp);
 			revert("game run");
 		}
 	}
@@ -186,7 +169,6 @@ contract Casino{
 			revert("game end");
 		}
 		else{
-			console.log(run_game.idx);
 			require(run_game.idx != 0 , "game not found");
 			require(run_game.userSelect[msg.sender] == 0);
 			require(users[msg.sender].insertedToken >= run_game.money, "inserted token < money");
@@ -209,8 +191,6 @@ contract Casino{
 			endGame();
 		}
 		if(run_game.createdAt + 5 >= block.timestamp && run_game.createdAt != 0 ){
-			console.log(run_game.createdAt + 5);
-			console.log(block.timestamp);
 			revert("game opend");
 		}
 		game_idx += 1;
@@ -247,8 +227,6 @@ contract Casino{
 	}
 	function welcome() proxyChk machineStatChk external{
 		if(!welcome_user[msg.sender]){
-			console.log("welcome");
-			console.log(msg.sender);
 			welcome_user[msg.sender] = true;
 			address impl = getAddress(_IMPLEMENTATION_SLOT);
 			(bool stat1, ) = address(stk).call(abi.encodeWithSignature("mint(uint256)",10 ether));

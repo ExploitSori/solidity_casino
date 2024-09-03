@@ -22,14 +22,12 @@ contract ProxyTest is Test {
 		stk = new STK(100 ether, address(proxy));
 		_proxy = Casino(address(proxy));
 		_proxy.initialize(address(proxy), address(stk));
-		console.log(address(proxy));
 		alice = makeAddr("alice");
 		bob = makeAddr("bob");
 		charlie = makeAddr("charlie");
 	}
 	function test_GetAddress() public {
 		address ret = proxy.getAddress();
-		console.log(ret);
 		require(ret == address(casino), "getAddress Error");
 	}
 	function test_modifyImplement() public{
@@ -37,9 +35,6 @@ contract ProxyTest is Test {
 		address ret = proxy.getAddress();
 		address stk_addr = address(stk);
 		address modify = address(newCasino);
-		console.log(ret);
-		console.log(modify);
-		//upgradeToAndCall(modify, "");
 		(bool success, ) = address(proxy).call(
 			abi.encodeWithSignature('upgradeToAndCall(address,bytes)', modify, abi.encodeWithSignature("initialize(address,address)", modify, stk_addr))
 		);
@@ -49,7 +44,7 @@ contract ProxyTest is Test {
 	function test_getRandom() public{
 		Casino _p = Casino(address(proxy));
 		uint a = _p.randoms();
-		console.log(a);
+
 	}
 	function welcome_a_b() public{
 		_proxy = Casino(address(proxy));
@@ -196,7 +191,6 @@ contract ProxyTest is Test {
 		vm.startPrank(charlie);
 		{
 			uint256 charlie_ins = _proxy.howManyMoney();
-			console.log(charlie_ins);
 			require(charlie_ins == 11 ether);
 		}
 		vm.stopPrank();
@@ -229,7 +223,6 @@ contract ProxyTest is Test {
 		vm.startPrank(charlie);
 		{
 			uint256 charlie_ins = _proxy.howManyMoney();
-			console.log(charlie_ins);
 			require(charlie_ins == 11 ether);
 			vm.expectRevert();
 			_proxy.claim(10 ether);
@@ -311,7 +304,6 @@ contract ProxyTest is Test {
 			stk.approve(address(proxy), 100 ether);
 			_proxy.insertToken(10 ether);
 			uint balance = stk.balanceOf(alice);
-			console.log(balance);
 			require(balance == 0, "balance err1");
 			_proxy.claim(10 ether);
 			uint256 alice_ins = _proxy.howManyMoney();
@@ -329,7 +321,6 @@ contract ProxyTest is Test {
 			stk.approve(address(proxy), 100 ether);
 			_proxy.insertToken(10 ether);
 			uint balance = stk.balanceOf(alice);
-			console.log(balance);
 			require(balance == 0, "balance err1");
 			_proxy.claim(100 ether);
 			
@@ -345,7 +336,6 @@ contract ProxyTest is Test {
 			stk.approve(address(proxy), 100 ether);
 			_proxy.insertToken(10 ether);
 			uint balance = stk.balanceOf(alice);
-			console.log(balance);
 			require(balance == 0, "balance err1");
 			_proxy.claim(10 ether);
 		}
