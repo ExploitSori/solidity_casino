@@ -32,9 +32,9 @@ contract Casino{
 	}
 	enum Status{
 		Wait,
-		In_progress,
-		ended,
-		stoped
+		Maked,
+		Running,
+		Ended
 	}
 	enum machineStat{
 		Run,
@@ -120,6 +120,7 @@ contract Casino{
 	function endGame() internal {
         clearGame(prev_game);
 		run_game.select = randoms();
+		run_game.stat = Status.Ended;
         prev_game.idx = run_game.idx;
         prev_game.userCnt = run_game.userCnt;
         prev_game.money = run_game.money;
@@ -172,11 +173,12 @@ contract Casino{
 			require(run_game.idx != 0 , "game not found");
 			require(run_game.userSelect[msg.sender] == 0);
 			require(users[msg.sender].insertedToken >= run_game.money, "inserted token < money");
+			users[msg.sender].insertedToken -= run_game.money;
 			run_game.userSelect[msg.sender] = selectNumber;
 			run_game.users.push(msg.sender);
 			run_game.lastJoinBlock = block.number;
 			run_game.userCnt += 1;
-			users[msg.sender].insertedToken -= run_game.money;
+			run_game.stat = Status.Running;
 			run_game.totalMoney += run_game.money;
 		}
 		
@@ -199,7 +201,7 @@ contract Casino{
 		run_game.users.push(msg.sender);
 		run_game.money = money;
 		run_game.totalMoney += money;
-		run_game.stat = Status.Wait;
+		run_game.stat = Status.Maked;
 		run_game.userSelect[msg.sender] = sel;
 		run_game.createdAt = block.timestamp;
 		run_game.lastJoinBlock = block.number;
