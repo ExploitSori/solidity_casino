@@ -37,8 +37,9 @@ contract Casino{
 		stoped
 	}
 	enum machineStat{
+		Run,
 		Stop,
-		Run
+		NotClaim
 	}
 	struct Game{
 		uint256 idx;
@@ -67,13 +68,25 @@ contract Casino{
 		require(proxy == address(this), "not proxy");
 		_;
 	}
+	modifier machineStatChk{
+		if(status == machineStat.Stop ){
+			revert("machine stop!");
+		}
+		_;
+	}
+	modifier machineStatChkClaim{
+		if(status == machineStat.NotClaim ){
+			revert("machine claim stop!");
+		}
+		_;
+	}
 	function initialize(address _proxy, address _stk) ownerChk external{
 		//require(!initailized, "initialized");
 		StorageSlot.getAddressSlot(_PROXY_SLOT).value = _proxy;
 		stk = STK(address(_stk));
 		initialized = true;
 	}
-	function insertToken(uint256 amount) proxyChk external{
+	function insertToken(uint256 amount) proxyChk machineStatChk external{
 		//approve chk => transferFrom
 		uint approved = stk.allowance(msg.sender, address(this));
 		uint balanced = stk.balanceOf(msg.sender);
@@ -156,7 +169,7 @@ contract Casino{
         // Optionally, reset run_game if needed
         clearGame(run_game);
     }
-	function gameEnd() proxyChk external {
+	function gameEnd() proxyChk machineStatChk external {
 		if(run_game.createdAt + 5 minutes <= block.timestamp && run_game.idx != 0){
 			endGame();
 		}
@@ -166,27 +179,27 @@ contract Casino{
 			revert("game run");
 		}
 	}
-	function gameJoin(uint256 selectNumber) proxyChk external {
+	function gameJoin(uint256 selectNumber) proxyChk machineStatChk external {
 		//game chk 
 		//joined game
 		if( run_game.createdAt + 5 minutes <= block.timestamp ) {
-		//	gameEnd();
-			endGame();
-			delete run_game;
+			revert("game end");
 		}
-		console.log(run_game.idx);
-		require(run_game.idx != 0 , "game not found");
-		require(run_game.userSelect[msg.sender] == 0);
-		require(users[msg.sender].insertedToken >= run_game.money, "inserted token < money");
-		run_game.userSelect[msg.sender] = selectNumber;
-		run_game.users.push(msg.sender);
-		run_game.lastJoinBlock = block.number;
-		run_game.userCnt += 1;
-		users[msg.sender].insertedToken -= run_game.money;
-		run_game.totalMoney += run_game.money;
+		else{
+			console.log(run_game.idx);
+			require(run_game.idx != 0 , "game not found");
+			require(run_game.userSelect[msg.sender] == 0);
+			require(users[msg.sender].insertedToken >= run_game.money, "inserted token < money");
+			run_game.userSelect[msg.sender] = selectNumber;
+			run_game.users.push(msg.sender);
+			run_game.lastJoinBlock = block.number;
+			run_game.userCnt += 1;
+			users[msg.sender].insertedToken -= run_game.money;
+			run_game.totalMoney += run_game.money;
+		}
 		
 	}
-	function makeGame(uint256 money, uint256 sel) proxyChk external{
+	function makeGame(uint256 money, uint256 sel) proxyChk machineStatChk external{
 		//makeGame
 		//이전 게임이 이전게임이 있다면 종료 후 생성
 		require(users[msg.sender].insertedToken >= money, "inserted token < money");
@@ -216,35 +229,32 @@ contract Casino{
 	function howManyMoney() proxyChk external returns(uint){
 		return users[msg.sender].insertedToken;
 	}
-	function claim(uint256 amount) proxyChk external {
+	function claim(uint256 amount) proxyChk machineStatChk machineStatChkClaim external {
 		//transfer
 		require(users[msg.sender].insertedToken >= amount, "amount err 3");
 		users[msg.sender].insertedToken -= amount;
 		stk.transfer(msg.sender, amount);
 	}
-	function games() proxyChk external returns(uint){
-		//print open Games
-//		bytes a = abi.encodePacked(123);
-		return 1;
-	}
+
 	function stopMachine() proxyChk ownerChk external{
 		status = machineStat.Stop;
 	}
-	function reloadMachine() proxyChk ownerChk external{
+	function reRunMachine() proxyChk ownerChk external{
 		status = machineStat.Run;
 	}
-	function welcome() proxyChk external{
+	function claimStopMachine() proxyChk ownerChk external{
+		status = machineStat.NotClaim;
+	}
+	function welcome() proxyChk machineStatChk external{
 		if(!welcome_user[msg.sender]){
 			console.log("welcome");
 			console.log(msg.sender);
 			welcome_user[msg.sender] = true;
 			address impl = getAddress(_IMPLEMENTATION_SLOT);
-			address(stk).call(abi.encodeWithSignature("mint(uint256)",10 ether));
-			address(stk).call(abi.encodeWithSignature("transfer(address,uint256)",msg.sender,10 ether));
-			/*			
-			stk.mint(100 ether);
-			stk.transfer(msg.sender, 100 ether);
-			*/
+			(bool stat1, ) = address(stk).call(abi.encodeWithSignature("mint(uint256)",10 ether));
+			require(stat1, "calling fails");
+			(bool stat2, ) = address(stk).call(abi.encodeWithSignature("transfer(address,uint256)",msg.sender,10 ether));
+			require(stat2, "calling fails");
 		}
 		else{
 			revert("Already paid");
@@ -253,7 +263,7 @@ contract Casino{
 	function upgradeTo(address impl) internal {
 		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = impl;
 	}
-	function upgradeToAndCall(address newImplementation, bytes memory data) proxyChk ownerChk public payable {
+	function upgradeToAndCall(address newImplementation, bytes memory data) proxyChk ownerChk machineStatChk public payable {
 		upgradeTo(newImplementation);
 		if(data.length > 0) {
 			(bool success, ) = newImplementation.delegatecall(data);

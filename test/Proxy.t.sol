@@ -13,6 +13,7 @@ contract ProxyTest is Test {
 	Casino public _proxy;
 	STK public stk;
 	address alice;
+	address bob;
 	address charlie;
 	function setUp() public {
 		address a = address(1);
@@ -23,6 +24,7 @@ contract ProxyTest is Test {
 		_proxy.initialize(address(proxy), address(stk));
 		console.log(address(proxy));
 		alice = makeAddr("alice");
+		bob = makeAddr("bob");
 		charlie = makeAddr("charlie");
 	}
 	function test_GetAddress() public {
@@ -109,6 +111,26 @@ contract ProxyTest is Test {
 		}
 		vm.stopPrank();
 	}
+	function test_joinGameEnd() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 1);
+		}
+		vm.stopPrank();
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.gameJoin(1);
+			
+		}
+		vm.stopPrank();
+	}
+	
 	function testFail_joinGame1() public{
 		Casino _proxy = Casino(address(proxy));
 		welcome_a_b();
@@ -136,6 +158,13 @@ contract ProxyTest is Test {
 			stk.approve(address(proxy), 100 ether);
 			_proxy.insertToken(10 ether);
 			_proxy.makeGame(1 ether, 1);
+		}
+		vm.stopPrank();
+		vm.warp(5 minutes + 1 seconds);
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
 			_proxy.gameJoin(1);
 		}
 		vm.stopPrank();
@@ -171,6 +200,51 @@ contract ProxyTest is Test {
 			require(charlie_ins == 11 ether);
 		}
 		vm.stopPrank();
+	}
+	function test_gameEndEmergencyStopClaim() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		_proxy.claimStopMachine();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.makeGame(1 ether, 122);
+			uint256 alice_ins = _proxy.howManyMoney();
+			require(alice_ins == 9 ether);
+		}
+		vm.stopPrank();
+		vm.startPrank(charlie);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			_proxy.gameJoin(1);
+			uint256 charlie_ins = _proxy.howManyMoney();
+			require(charlie_ins == 9 ether);
+		}
+		vm.stopPrank();
+		//vm.roll(block.number + 1);
+		vm.warp(5 minutes + 1 seconds);
+		_proxy.gameEnd();
+		vm.startPrank(charlie);
+		{
+			uint256 charlie_ins = _proxy.howManyMoney();
+			console.log(charlie_ins);
+			require(charlie_ins == 11 ether);
+			vm.expectRevert();
+			_proxy.claim(10 ether);
+		}
+		vm.stopPrank();
+		_proxy.reRunMachine();
+		vm.startPrank(charlie);
+		{
+			_proxy.claim(11 ether);
+			uint256 charlie_ins = _proxy.howManyMoney();
+			require(charlie_ins == 0);
+			uint256 charlie_bal = stk.balanceOf(charlie);
+			require(charlie_bal == 11 ether);
+
+		}
 	}
 	function testFail_gameEnd() public{
 		Casino _proxy = Casino(address(proxy));
@@ -228,5 +302,66 @@ contract ProxyTest is Test {
 			uint256 alice_ins = _proxy.howManyMoney();
 			require(alice_ins == 9 ether);	
 		}
+	}
+	function test_claim() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			uint balance = stk.balanceOf(alice);
+			console.log(balance);
+			require(balance == 0, "balance err1");
+			_proxy.claim(10 ether);
+			uint256 alice_ins = _proxy.howManyMoney();
+			require(alice_ins == 0);
+			balance = stk.balanceOf(alice);
+			require(balance == 10 ether, "balance err2");	
+		}
+		vm.stopPrank();
+	}
+	function testFail_claim() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			uint balance = stk.balanceOf(alice);
+			console.log(balance);
+			require(balance == 0, "balance err1");
+			_proxy.claim(100 ether);
+			
+		}
+		vm.stopPrank();
+	}
+	function testFail_claimAtEmergency() public{
+		Casino _proxy = Casino(address(proxy));
+		welcome_a_b();
+		_proxy.stopMachine();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			_proxy.insertToken(10 ether);
+			uint balance = stk.balanceOf(alice);
+			console.log(balance);
+			require(balance == 0, "balance err1");
+			_proxy.claim(10 ether);
+		}
+		vm.stopPrank();
+	}
+	function test_claimAtEmergencyStop() public{
+		Casino _proxy = Casino(address(proxy));
+		_proxy.stopMachine();
+		vm.startPrank(alice);
+		{
+			stk.approve(address(proxy), 100 ether);
+			vm.expectRevert();
+			_proxy.reRunMachine();
+			vm.expectRevert();
+			_proxy.claimStopMachine();
+		}
+		vm.stopPrank();
 	}
 }
