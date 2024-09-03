@@ -27,7 +27,7 @@ contract Casino{
 		StorageSlot.getAddressSlot(_ADMIN_SLOT).value = tx.origin;
 		StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = address(this);
 	}
-	function getAddress(bytes32 slot)public returns(address){
+	function getAddress(bytes32 slot)public view returns(address){
 		return StorageSlot.getAddressSlot(slot).value;
 	}
 	enum Status{
@@ -92,10 +92,10 @@ contract Casino{
 		(bool success, ) = address(stk).call(abi.encodeWithSignature("transferFrom(address,address,uint256)",msg.sender, address(this), amount));
 		users[msg.sender].insertedToken += amount;
 	}
-	function randoms() public returns(uint){
+	function randoms() public view returns(uint){
 		// random > block difict, num, time mix...
-		uint256 pick = 2;
-		uint256 rand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, block.difficulty, block.number))) % 2;
+		uint256 pick = 3;
+		uint256 rand = (uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, block.number))) % pick) + 1;
 		return rand;
 	}
 	function clearGame(Game storage game) internal {
@@ -213,7 +213,7 @@ contract Casino{
 		
 	}
 	
-	function howManyMoney() proxyChk external returns(uint){
+	function howManyMoney() proxyChk external view returns(uint){
 		return users[msg.sender].insertedToken;
 	}
 	function claim(uint256 amount) proxyChk machineStatChk machineStatChkClaim external {
@@ -235,7 +235,6 @@ contract Casino{
 	function welcome() proxyChk machineStatChk external{
 		if(!welcome_user[msg.sender]){
 			welcome_user[msg.sender] = true;
-			address impl = getAddress(_IMPLEMENTATION_SLOT);
 			(bool stat1, ) = address(stk).call(abi.encodeWithSignature("mint(uint256)",10 ether));
 			require(stat1, "calling fails");
 			(bool stat2, ) = address(stk).call(abi.encodeWithSignature("transfer(address,uint256)",msg.sender,10 ether));

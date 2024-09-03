@@ -16,7 +16,6 @@ contract ProxyTest is Test {
 	address bob;
 	address charlie;
 	function setUp() public {
-		address a = address(1);
 		casino = new Casino();
 		proxy = new Proxy(address(casino));
 		stk = new STK(100 ether, address(proxy));
@@ -39,11 +38,6 @@ contract ProxyTest is Test {
 			abi.encodeWithSignature('upgradeToAndCall(address,bytes)', modify, abi.encodeWithSignature("initialize(address,address)", modify, stk_addr))
 		);
 		require(ret != modify, "proxy not changed");
-
-	}
-	function test_getRandom() public{
-		Casino _p = Casino(address(proxy));
-		uint a = _p.randoms();
 
 	}
 	function welcome_a_b() public{
