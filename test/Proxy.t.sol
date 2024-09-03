@@ -341,7 +341,7 @@ contract ProxyTest is Test {
 		}
 		vm.stopPrank();
 	}
-	function test_claimAtEmergencyStop() public{
+	function test_userModifyContractStatus() public{
 		Casino _proxy = Casino(address(proxy));
 		_proxy.stopMachine();
 		vm.startPrank(alice);
